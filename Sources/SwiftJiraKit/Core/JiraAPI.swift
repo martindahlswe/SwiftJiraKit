@@ -21,4 +21,14 @@ public class JiraAPI {
     public var issueService: IssueService {
         return IssueService(networkManager: networkManager)
     }
+
+    public var connectivityService: ConnectivityService {
+        return ConnectivityService(networkManager: networkManager)
+    }
+
+    /// Validates connectivity by checking the provided URL and token.
+    /// - Parameter completion: A closure with the result of the validation.
+    public func validateConnectivity(completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
+        connectivityService.validateConnectivity(completion: completion)
+    }
 }

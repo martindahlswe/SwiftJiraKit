@@ -1,4 +1,3 @@
-
 # SwiftJiraKit
 
 SwiftJiraKit is a lightweight and modular Swift library for interacting with Jira's REST API (version 2). It simplifies tasks like logging work time and managing Jira issues, making it ideal for developers who want an easy-to-use solution for Jira API integration in their Swift projects.
@@ -6,6 +5,7 @@ SwiftJiraKit is a lightweight and modular Swift library for interacting with Jir
 ## Features
 
 - Log work time on Jira issues with minimal effort.
+- Validate connectivity to your Jira instance, including URL reachability and token authentication.
 - Modular design for future extensions (e.g., fetching issues, comments, etc.).
 - Built-in support for Bearer token authentication.
 - Clean and extensible API interface.
@@ -56,9 +56,20 @@ jiraAPI.worklogService.logWork(
 }
 ```
 
-### 3. Fetch Issue Details (Coming Soon)
+### 3. Validate Connectivity
 
-Stay tuned for updates as more features like fetching issue details and adding comments are implemented.
+Before performing any operations, you can validate your connectivity to the Jira server. This checks both the URL and token authentication:
+
+```swift
+jiraAPI.validateConnectivity { result in
+    switch result {
+    case .success:
+        print("Connectivity check passed! URL and token are valid.")
+    case .failure(let error):
+        print("Connectivity check failed: \(error.localizedDescription)")
+    }
+}
+```
 
 ## Contributing
 
@@ -78,3 +89,4 @@ This project is licensed under the [MIT License](LICENSE). You are free to use, 
 
 - Thanks to the Jira REST API team for providing comprehensive documentation.
 - Built with ❤️  by Martin Dahl.
+
