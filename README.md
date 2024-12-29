@@ -16,7 +16,7 @@ SwiftJiraKit is distributed as a Swift Package Manager (SPM) package. Add the fo
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/martindahlswe/SwiftJiraKit.git", from: "1.0.0")
+    .package(url: "https://github.com/martindahlswe/SwiftJiraKit.git", from: "1.0.1")
 ]
 ```
 
