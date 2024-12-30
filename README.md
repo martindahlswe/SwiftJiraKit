@@ -1,10 +1,11 @@
 # SwiftJiraKit
 
-SwiftJiraKit is a lightweight and modular Swift library for interacting with Jira's REST API (version 2). It simplifies tasks like logging work time and managing Jira issues, making it ideal for developers who want an easy-to-use solution for Jira API integration in their Swift projects.
+SwiftJiraKit is a lightweight and modular Swift library for interacting with Jira's REST API (version 2). It simplifies tasks like logging work time, managing worklogs, and validating connectivity, making it ideal for developers who want an easy-to-use solution for Jira API integration in their Swift projects.
 
 ## Features
 
-- Log work time on Jira issues with minimal effort.
+- Log, retrieve, update, and delete worklogs for Jira issues.
+- Manage worklog properties, including setting and deleting them.
 - Validate connectivity to your Jira instance, including URL reachability and token authentication.
 - Modular design for future extensions (e.g., fetching issues, comments, etc.).
 - Built-in support for Bearer token authentication.
@@ -16,7 +17,7 @@ SwiftJiraKit is distributed as a Swift Package Manager (SPM) package. Add the fo
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/martindahlswe/SwiftJiraKit.git", from: "1.0.1")
+    .package(url: "https://github.com/martindahlswe/SwiftJiraKit.git", from: "1.1.0")
 ]
 ```
 
@@ -36,22 +37,60 @@ Start by creating an instance of `JiraAPI` with your Jira instance's base URL an
 let jiraAPI = JiraAPI(baseURL: "https://your-jira-instance.atlassian.net", token: "your-personal-access-token")
 ```
 
-### 2. Log Work Time
+### 2. Worklog Management
 
-Log work time for an issue using the `WorklogService`:
-
+#### Add a Worklog
 ```swift
-jiraAPI.worklogService.logWork(
-    issueKey: "PROJECT-123",
-    timeSpentSeconds: 3600,  // 1 hour
-    started: "2024-01-01T12:00:00.000+0000",  // ISO8601 format
-    comment: "Implemented feature X"
-) { result in
+let worklogRequest = WorklogRequest(
+    timeSpent: "1h",
+    timeSpentSeconds: 3600,
+    started: "2024-01-01T12:00:00.000+0000",
+    comment: "Worked on feature X",
+    visibility: nil
+)
+
+jiraAPI.worklogService.addWorklog(issueKey: "PROJECT-123", worklog: worklogRequest) { result in
     switch result {
     case .success(let response):
         print("Worklog added with ID: \(response.id)")
     case .failure(let error):
-        print("Failed to log work: \(error)")
+        print("Failed to add worklog: \(error)")
+    }
+}
+```
+
+#### Retrieve Worklogs
+```swift
+jiraAPI.worklogService.getWorklogs(issueKey: "PROJECT-123") { result in
+    switch result {
+    case .success(let worklogs):
+        print("Retrieved \(worklogs.count) worklogs")
+    case .failure(let error):
+        print("Failed to retrieve worklogs: \(error)")
+    }
+}
+```
+
+#### Update a Worklog
+```swift
+jiraAPI.worklogService.updateWorklog(issueKey: "PROJECT-123", worklogId: "1", worklog: worklogRequest) { result in
+    switch result {
+    case .success(let response):
+        print("Worklog updated with ID: \(response.id)")
+    case .failure(let error):
+        print("Failed to update worklog: \(error)")
+    }
+}
+```
+
+#### Delete a Worklog
+```swift
+jiraAPI.worklogService.deleteWorklog(issueKey: "PROJECT-123", worklogId: "1") { result in
+    switch result {
+    case .success:
+        print("Worklog deleted successfully")
+    case .failure(let error):
+        print("Failed to delete worklog: \(error)")
     }
 }
 ```
@@ -70,6 +109,10 @@ jiraAPI.validateConnectivity { result in
     }
 }
 ```
+
+## Testing
+
+The library includes comprehensive tests for all core functionality. Run tests using Xcode (`Command + U`) or the `swift test` command.
 
 ## Contributing
 

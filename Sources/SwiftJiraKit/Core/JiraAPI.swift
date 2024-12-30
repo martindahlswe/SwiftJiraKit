@@ -3,7 +3,11 @@ import Foundation
 public class JiraAPI {
     private let baseURL: URL
     private let token: String
-    private let networkManager: NetworkManager
+    private let privateNetworkManager: NetworkManager
+
+    public var networkManager: NetworkManager {
+        return privateNetworkManager
+    }
 
     public init(baseURL: String, token: String) {
         guard let url = URL(string: baseURL) else {
@@ -11,24 +15,30 @@ public class JiraAPI {
         }
         self.baseURL = url
         self.token = token
-        self.networkManager = NetworkManager(baseURL: url, token: token)
-    }
-
-    public var worklogService: WorklogService {
-        return WorklogService(networkManager: networkManager)
-    }
-
-    public var issueService: IssueService {
-        return IssueService(networkManager: networkManager)
+        self.privateNetworkManager = NetworkManager(baseURL: url, token: token)
     }
 
     public var connectivityService: ConnectivityService {
         return ConnectivityService(networkManager: networkManager)
     }
 
-    /// Validates connectivity by checking the provided URL and token.
-    /// - Parameter completion: A closure with the result of the validation.
+    /// Original `validateConnectivity` function (unchanged for backwards compatibility)
     public func validateConnectivity(completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
         connectivityService.validateConnectivity(completion: completion)
     }
+
+    /// New `async` version of `validateConnectivity`
+    public func validateConnectivity() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            validateConnectivity { result in
+                switch result {
+                case .success:
+                    continuation.resume()
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 }
+

@@ -1,9 +1,10 @@
 import Foundation
 
 public class ConnectivityService {
-    private let networkManager: NetworkManager
+    private let networkManager: NetworkManaging  // Use the protocol
 
-    init(networkManager: NetworkManager) {
+    /// Make the initializer public
+    public init(networkManager: NetworkManaging) {
         self.networkManager = networkManager
     }
 
@@ -11,18 +12,18 @@ public class ConnectivityService {
     /// - Parameter completion: A closure with the result of the validation.
     public func validateConnectivity(completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
         let endpoint = "rest/api/2/myself" // A lightweight endpoint to check authentication.
-        networkManager.sendRequest(endpoint: endpoint, method: "GET") { (result: Result<MyselfResponse, Error>) in
+        networkManager.sendRequest(endpoint: endpoint, method: "GET", body: nil) { (result: Result<MyselfResponse, Error>) in
             switch result {
             case .success:
-                completion(.success(())) // Connectivity check passed.
+                completion(.success(()))
             case .failure(let error):
-                completion(.failure(error)) // Pass along the error.
+                completion(.failure(error))
             }
         }
     }
 }
 
-struct MyselfResponse: Decodable {
+public struct MyselfResponse: Decodable, Encodable { // Add Encodable conformance
     let selfURL: String // URL of the authenticated user's profile
     let accountId: String // Account ID of the user
 
