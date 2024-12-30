@@ -71,6 +71,29 @@ jiraAPI.validateConnectivity { result in
 }
 ```
 
+### 4. Get User by ID
+
+Get details about an user by ID:
+```swift
+jiraAPI.UserService.getUser{
+    accountId: "12345"
+}{
+    switch result {
+    case .success(let response):
+        print("User has been found with following details: ")
+        print("accountID: \(response.accountID)")
+        print("accountType: \(response.accountType)")
+        print("active: \(response.active)")
+        print("displayname: \(response.displayName)")
+        print("email: \(response.email)")
+        print("name: \(response.name)")
+        print("timeZone: \(response.timeZone)")
+    case .failure(let error):
+        print("Failed to catch user by ID: \(error)")
+    }
+}
+```
+
 ## Contributing
 
 Contributions are welcome! If you have an idea or find a bug, feel free to open an issue or submit a pull request.
