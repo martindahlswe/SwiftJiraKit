@@ -1,6 +1,8 @@
 import Foundation
 
-public class JiraAPI {
+/// Declaring JiraAPI as `@unchecked Sendable` because it is up to the developer
+/// to ensure thread safety within this class.
+public class JiraAPI: @unchecked Sendable {
     private let baseURL: URL
     private let token: String
     private let privateNetworkManager: NetworkManager
@@ -41,4 +43,3 @@ public class JiraAPI {
         }
     }
 }
-
