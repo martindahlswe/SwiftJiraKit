@@ -15,9 +15,14 @@ public struct JQLBuilder {
         return newBuilder
     }
 
-    public func addCondition(field: String, comparisonOperator: String, values: [String]) -> JQLBuilder {
-        let escapedValues = values.map { "\"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" }
-        let condition = "\(field) \(comparisonOperator) (\(escapedValues.joined(separator: ", ")))"
+    public func addCondition(field: String, comparisonOperator: String, value: String, isFunction: Bool = false) -> JQLBuilder {
+        let condition: String
+        if isFunction {
+            condition = "\(field) \(comparisonOperator) \(value)"
+        } else {
+            let escapedValue = value.replacingOccurrences(of: "\"", with: "\\\"")
+            condition = "\(field) \(comparisonOperator) \"\(escapedValue)\""
+        }
         var newBuilder = self
         newBuilder.conditions.append(condition)
         return newBuilder
