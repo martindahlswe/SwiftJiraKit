@@ -2,9 +2,11 @@ import Foundation
 
 public class IssueService {
     private let networkManager: NetworkManaging
+    public let serverName: String  // Add serverName property
 
-    public init(networkManager: NetworkManaging) { // Use protocol type
+    public init(networkManager: NetworkManaging, serverName: String) { // Add serverName parameter
         self.networkManager = networkManager
+        self.serverName = serverName
     }
 
     // Fetch issue details
@@ -66,3 +68,4 @@ public class IssueService {
 private struct SearchResponse: Decodable {
     let issues: [IssueResponse]
 }
+
