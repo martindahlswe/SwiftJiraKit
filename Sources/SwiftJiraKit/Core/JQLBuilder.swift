@@ -1,11 +1,3 @@
-//
-//  JQLBuilder.swift
-//  SwiftJiraKit
-//
-//  Created by Martin Dahl on 2024-12-31.
-//
-
-
 import Foundation
 
 public struct JQLBuilder {
@@ -33,5 +25,10 @@ public struct JQLBuilder {
 
     public func build() -> String {
         return conditions.joined(separator: " AND ")
+    }
+
+    public func buildURLQuery() -> String {
+        let jql = build()
+        return "jql=\(jql.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
     }
 }
