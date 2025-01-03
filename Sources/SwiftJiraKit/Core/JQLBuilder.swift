@@ -7,14 +7,6 @@ public struct JQLBuilder {
         self.conditions = []
     }
 
-    public func addCondition(field: String, comparisonOperator: String, value: String) -> JQLBuilder {
-        let escapedValue = value.replacingOccurrences(of: "\"", with: "\\\"")
-        let condition = "\(field) \(comparisonOperator) \"\(escapedValue)\""
-        var newBuilder = self
-        newBuilder.conditions.append(condition)
-        return newBuilder
-    }
-
     public func addCondition(field: String, comparisonOperator: String, value: String, isFunction: Bool = false) -> JQLBuilder {
         let condition: String
         if isFunction {
@@ -32,8 +24,9 @@ public struct JQLBuilder {
         return conditions.joined(separator: " AND ")
     }
 
-    public func buildURLQuery() -> String {
-        let jql = build()
-        return "jql=\(jql.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+    public func buildURLQuery(baseURL: String) -> String {
+        let conditions = self.conditions.joined(separator: " AND ")
+        let encodedJQL = conditions.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return "\(baseURL)/rest/api/2/search?jql=\(encodedJQL)"
     }
 }
