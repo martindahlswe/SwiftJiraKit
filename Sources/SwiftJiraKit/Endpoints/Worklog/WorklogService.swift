@@ -12,7 +12,9 @@ public class WorklogService {
         completion: @escaping @Sendable (Result<[WorklogResponse], Error>) -> Void
     ) {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog"
-        networkManager.sendRequest(endpoint: endpoint, method: "GET", body: nil, completion: completion)
+        networkManager.sendRequest(endpoint: endpoint, method: "GET") { (result: Result<[WorklogResponse], Error>) in
+            completion(result)
+        }
     }
 
     public func addWorklog(
@@ -23,7 +25,9 @@ public class WorklogService {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog"
         do {
             let body = try JSONEncoder().encode(worklog)
-            networkManager.sendRequest(endpoint: endpoint, method: "POST", body: body, completion: completion)
+            networkManager.sendRequest(endpoint: endpoint, method: "POST", body: body) { (result: Result<WorklogResponse, Error>) in
+                completion(result)
+            }
         } catch {
             completion(.failure(error))
         }
@@ -38,7 +42,9 @@ public class WorklogService {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog/\(worklogId)"
         do {
             let body = try JSONEncoder().encode(worklog)
-            networkManager.sendRequest(endpoint: endpoint, method: "PUT", body: body, completion: completion)
+            networkManager.sendRequest(endpoint: endpoint, method: "PUT", body: body) { (result: Result<WorklogResponse, Error>) in
+                completion(result)
+            }
         } catch {
             completion(.failure(error))
         }
@@ -50,13 +56,8 @@ public class WorklogService {
         completion: @escaping @Sendable (Result<Void, Error>) -> Void
     ) {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog/\(worklogId)"
-        networkManager.sendRequest(endpoint: endpoint, method: "DELETE", body: nil) { (result: Result<Data?, Error>) in
-            switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(let error):
-                completion(.failure(error))
-            }
+        networkManager.sendRequest(endpoint: endpoint, method: "DELETE") { (result: Result<Void, Error>) in
+            completion(result)
         }
     }
 
@@ -70,13 +71,8 @@ public class WorklogService {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog/\(worklogId)/properties/\(propertyKey)"
         do {
             let body = try JSONSerialization.data(withJSONObject: propertyValue, options: [])
-            networkManager.sendRequest(endpoint: endpoint, method: "PUT", body: body) { (result: Result<Data?, Error>) in
-                switch result {
-                case .success:
-                    completion(.success(()))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
+            networkManager.sendRequest(endpoint: endpoint, method: "PUT", body: body) { (result: Result<Void, Error>) in
+                completion(result)
             }
         } catch {
             completion(.failure(error))
@@ -90,13 +86,8 @@ public class WorklogService {
         completion: @escaping @Sendable (Result<Void, Error>) -> Void
     ) {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog/\(worklogId)/properties/\(propertyKey)"
-        networkManager.sendRequest(endpoint: endpoint, method: "DELETE", body: nil) { (result: Result<Data?, Error>) in
-            switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(let error):
-                completion(.failure(error))
-            }
+        networkManager.sendRequest(endpoint: endpoint, method: "DELETE") { (result: Result<Void, Error>) in
+            completion(result)
         }
     }
 }
