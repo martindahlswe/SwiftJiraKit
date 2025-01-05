@@ -8,7 +8,9 @@ public enum APIError: Error, LocalizedError, Equatable {
     case invalidRequestBody
     case unauthorized
     case notFound
+    case invalidEndpoint
     case unknown(String)
+    case invalidServerURL(String)
 
     /// A user-friendly description of the error.
     public var errorDescription: String? {
@@ -25,8 +27,12 @@ public enum APIError: Error, LocalizedError, Equatable {
             return "The request is unauthorized. Please check your credentials."
         case .notFound:
             return "The requested resource was not found."
+        case .invalidEndpoint:
+            return "The requested endpoint is invalid or malformed."
         case .unknown(let message):
             return "An unknown error occurred: \(message)"
+        case .invalidServerURL(let url):
+            return "Invalid server URL: \(url)."
         }
     }
 
@@ -46,7 +52,8 @@ public enum APIError: Error, LocalizedError, Equatable {
              (.decodingError, .decodingError),
              (.invalidRequestBody, .invalidRequestBody),
              (.unauthorized, .unauthorized),
-             (.notFound, .notFound):
+             (.notFound, .notFound),
+             (.invalidEndpoint, .invalidEndpoint): // Add comparison for invalidEndpoint
             return true
         case (.networkError(let lhsError), .networkError(let rhsError)):
             return lhsError.localizedDescription == rhsError.localizedDescription

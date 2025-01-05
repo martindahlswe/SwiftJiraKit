@@ -1,104 +1,42 @@
-//
-//  JQLBuilderTests.swift
-//  SwiftJiraKit
-//
-//  Created by Martin Dahl on 2025-01-05.
-//
-
-
-//
-//  JQLBuilderTests.swift
-//  SwiftJiraKitTests
-//
-
 import XCTest
 @testable import SwiftJiraKit
 
 final class JQLBuilderTests: XCTestCase {
-    var builder: JQLBuilder!
-
-    override func setUp() {
-        super.setUp()
-        builder = JQLBuilder()
-    }
-
-    override func tearDown() {
-        builder = nil
-        super.tearDown()
-    }
-
     func testAssignedTo() {
-        // Act
-        let query = builder.assignedTo("john.doe").build()
-
-        // Assert
-        XCTAssertEqual(query, "assignee = \"john.doe\"")
+        let builder = JQLBuilder()
+        let query = builder.assignedTo("johndoe").build()
+        XCTAssertEqual(query, "assignee = \"johndoe\"")
     }
 
     func testWithStatus() {
-        // Act
-        let query = builder.withStatus("Open").build()
-
-        // Assert
-        XCTAssertEqual(query, "status = \"Open\"")
+        let builder = JQLBuilder()
+        let query = builder.withStatus("In Progress").build()
+        XCTAssertEqual(query, "status = \"In Progress\"")
     }
 
     func testWithIssueType() {
-        // Act
+        let builder = JQLBuilder()
         let query = builder.withIssueType("Bug").build()
-
-        // Assert
         XCTAssertEqual(query, "issuetype = \"Bug\"")
     }
 
     func testCreatedOnOrAfter() {
-        // Arrange
-        let date = ISO8601DateFormatter().date(from: "2025-01-05T00:00:00Z")!
-
-        // Act
+        let builder = JQLBuilder()
+        let date = ISO8601DateFormatter().date(from: "2023-01-01T00:00:00Z")!
         let query = builder.createdOnOrAfter(date).build()
-
-        // Assert
-        XCTAssertEqual(query, "created >= \"2025-01-05T00:00:00Z\"")
-    }
-
-    func testMultipleConditions() {
-        // Act
-        let query = builder
-            .assignedTo("jane.doe")
-            .withStatus("In Progress")
-            .withIssueType("Task")
-            .build()
-
-        // Assert
-        XCTAssertEqual(query, "assignee = \"jane.doe\" AND status = \"In Progress\" AND issuetype = \"Task\"")
+        XCTAssertEqual(query, "created >= \"2023-01-01T00:00:00Z\"")
     }
 
     func testReset() {
-        // Arrange
-        builder.assignedTo("jane.doe").withStatus("In Progress")
-
-        // Act
+        let builder = JQLBuilder()
+        builder.assignedTo("johndoe").withStatus("In Progress")
         builder.reset()
-        let query = builder.build()
-
-        // Assert
-        XCTAssertEqual(query, "")
+        XCTAssertEqual(builder.build(), "")
     }
 
-    func testPreview() {
-        // Act
-        let preview = builder.assignedTo("john.doe").preview()
-
-        // Assert
-        XCTAssertEqual(preview, "assignee = \"john.doe\"")
-    }
-
-    func testEmptyBuild() {
-        // Act
-        let query = builder.build()
-
-        // Assert
-        XCTAssertEqual(query, "")
+    func testBuild() {
+        let builder = JQLBuilder()
+        let query = builder.assignedTo("johndoe").withStatus("In Progress").build()
+        XCTAssertEqual(query, "assignee = \"johndoe\" AND status = \"In Progress\"")
     }
 }

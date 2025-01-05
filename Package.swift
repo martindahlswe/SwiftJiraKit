@@ -1,10 +1,10 @@
-// swift-tools-version:5.5
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
     name: "SwiftJiraKit",
     platforms: [
-        .macOS(.v12),
+        .macOS(.v14),
         .iOS(.v15)
     ],
     products: [

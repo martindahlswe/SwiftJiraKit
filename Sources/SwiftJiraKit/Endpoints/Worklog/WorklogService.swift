@@ -13,42 +13,24 @@ public class WorklogService {
         logger.info("WorklogService initialized")
     }
 
-    /// Fetches worklogs for a specific issue.
-    /// - Parameter issueKey: The key of the Jira issue.
-    /// - Returns: An array of `WorklogResponse` objects.
-    /// - Throws: An `APIError` if the operation fails.
-    public func getWorklogs(for issueKey: String) async throws -> [WorklogResponse] {
-        let endpoint = "rest/api/2/issue/\(issueKey)/worklog"
-        logger.info("Fetching worklogs for issue: \(issueKey)")
-
-        do {
-            let data = try await networkManager.getData(from: endpoint)
-            let worklogs = try JSONDecoder().decode([WorklogResponse].self, from: data)
-            logger.info("Successfully fetched \(worklogs.count) worklogs for issue: \(issueKey)")
-            return worklogs
-        } catch let error as DecodingError {
-            logger.error("Failed to decode worklog response: \(error.localizedDescription)")
-            throw APIError.decodingError
-        } catch let error as APIError {
-            logger.error("APIError occurred while fetching worklogs: \(error.localizedDescription)")
-            throw error
-        } catch {
-            logger.error("Unexpected error occurred while fetching worklogs: \(error.localizedDescription)")
-            throw APIError.networkError(error)
-        }
-    }
-
     /// Creates a new worklog for a specific issue.
     /// - Parameters:
-    ///   - issueKey: The key of the Jira issue.
+    ///   - issueKey: The key or ID of the Jira issue.
     ///   - worklog: The worklog request data.
     /// - Returns: The created `WorklogResponse`.
     /// - Throws: An `APIError` if the operation fails.
-    public func addWorklog(to issueKey: String, worklog: WorklogRequest) async throws -> WorklogResponse {
+    public func addWorklog(
+        to issueKey: String,
+        worklog: WorklogRequest
+    ) async throws -> WorklogResponse {
         let endpoint = "rest/api/2/issue/\(issueKey)/worklog"
-        let payload = try JSONEncoder().encode(worklog)
-        logger.info("Creating new worklog for issue: \(issueKey)")
+        logger.info("Preparing to send worklog to \(endpoint)")
 
+        // Encode the worklog payload
+        let payload = try JSONEncoder().encode(worklog)
+        logger.info("[SwiftJiraKit] Worklog payload: \(String(data: payload, encoding: .utf8) ?? "Invalid UTF8")")
+
+        // Send the POST request
         do {
             let data = try await networkManager.postData(to: endpoint, body: payload)
             let createdWorklog = try JSONDecoder().decode(WorklogResponse.self, from: data)

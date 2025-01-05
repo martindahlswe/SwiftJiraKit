@@ -10,11 +10,12 @@ final class NetworkManagerTests: XCTestCase {
     var networkManager: NetworkManager!
     var mockURLSession: MockURLSession!
     let baseURL = URL(string: "https://api.example.com")!
+    let token = "testBearerToken"
 
     override func setUp() {
         super.setUp()
         mockURLSession = MockURLSession()
-        networkManager = NetworkManager(baseURL: baseURL, urlSession: mockURLSession)
+        networkManager = NetworkManager(baseURL: baseURL, token: token, urlSession: mockURLSession)
     }
 
     override func tearDown() {
@@ -25,64 +26,39 @@ final class NetworkManagerTests: XCTestCase {
 
     func testGetData_Success() async throws {
         let expectedData = "Test Data".data(using: .utf8)!
-        mockURLSession.mockResponse = (expectedData, HTTPURLResponse(url: baseURL, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        mockURLSession.mockResponse = (expectedData, HTTPURLResponse(url: baseURL.appendingPathComponent("/test"), statusCode: 200, httpVersion: nil, headerFields: nil)!)
+
         let data = try await networkManager.getData(from: "/test")
         XCTAssertEqual(data, expectedData)
+        XCTAssertEqual(mockURLSession.capturedRequest?.value(forHTTPHeaderField: "Authorization"), "Bearer \(token)")
+        XCTAssertEqual(mockURLSession.capturedRequest?.httpMethod, "GET")
     }
 
     func testGetData_Failure_InvalidResponse() async {
+        // Simulate a missing response
         mockURLSession.mockResponse = nil
 
         await XCTAssertAsyncThrowsError(try await self.networkManager.getData(from: "/test")) { error in
-            guard case let APIError.networkError(innerError) = error,
-                  innerError as? APIError == APIError.invalidResponse else {
-                XCTFail("Expected invalidResponse wrapped in networkError, but got \(error)")
+            guard let apiError = error as? APIError, case .networkError(let innerError) = apiError else {
+                XCTFail("Expected APIError.networkError wrapping APIError.invalidResponse, but got \(error)")
                 return
             }
+            XCTAssert(innerError is APIError)
+            XCTAssertEqual(innerError as? APIError, .invalidResponse)
         }
     }
 
     func testGetData_Failure_HTTPError() async {
-        mockURLSession.mockResponse = (nil, HTTPURLResponse(url: baseURL, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+        // Simulate an HTTP 404 error
+        mockURLSession.mockResponse = (nil, HTTPURLResponse(url: baseURL.appendingPathComponent("/test"), statusCode: 404, httpVersion: nil, headerFields: nil)!)
 
         await XCTAssertAsyncThrowsError(try await self.networkManager.getData(from: "/test")) { error in
-            guard case let APIError.networkError(innerError) = error,
-                  innerError as? APIError == APIError.unknown("HTTP 404") else {
-                XCTFail("Expected HTTP 404 wrapped in networkError, but got \(error)")
+            guard let apiError = error as? APIError, case .networkError(let innerError) = apiError else {
+                XCTFail("Expected APIError.networkError wrapping APIError.unknown(\"HTTP 404\"), but got \(error)")
                 return
             }
+            XCTAssert(innerError is APIError)
+            XCTAssertEqual(innerError as? APIError, .unknown("HTTP 404"))
         }
-    }
-}
-
-// Custom helper for async error assertions
-func XCTAssertAsyncThrowsError<T>(
-    _ expression: @autoclosure @escaping () async throws -> T,
-    _ message: @autoclosure @escaping () -> String = "",
-    file: StaticString = #file,
-    line: UInt = #line,
-    _ errorHandler: ((Error) -> Void)? = nil
-) async {
-    do {
-        _ = try await expression()
-        XCTFail(message(), file: file, line: line)
-    } catch {
-        errorHandler?(error)
-    }
-}
-
-// Mock implementation of URLSessionProtocol
-final class MockURLSession: URLSessionProtocol {
-    var mockResponse: (Data?, HTTPURLResponse)?
-    var mockError: Error?
-
-    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        if let error = mockError {
-            throw error
-        }
-        guard let response = mockResponse?.1 else {
-            throw APIError.invalidResponse
-        }
-        return (mockResponse?.0 ?? Data(), response)
     }
 }

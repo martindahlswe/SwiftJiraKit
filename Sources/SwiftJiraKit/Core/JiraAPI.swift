@@ -1,3 +1,8 @@
+//
+//  JiraAPI.swift
+//  SwiftJiraKit
+//
+
 import Foundation
 import Logging
 
@@ -7,10 +12,13 @@ public class JiraAPI {
     private let logger = Logger(label: "com.swiftjirakit.jiraapi")
 
     /// Initializes the JiraAPI with a network manager.
-    /// - Parameter networkManager: A `NetworkManaging` instance for handling requests.
-    public init(networkManager: NetworkManaging) {
-        self.networkManager = networkManager
-        logger.info("JiraAPI initialized")
+    /// - Parameters:
+    ///   - baseURL: The base URL of the Jira server.
+    ///   - token: The Bearer token for authentication.
+    ///   - networkManager: A custom `NetworkManaging` instance for testing or default functionality.
+    public init(baseURL: URL, token: String, networkManager: NetworkManaging? = nil) {
+        self.networkManager = networkManager ?? NetworkManager(baseURL: baseURL, token: token)
+        logger.info("JiraAPI initialized with base URL: \(baseURL)")
     }
 
     /// Validates connectivity to the Jira instance.
@@ -32,14 +40,15 @@ public class JiraAPI {
     }
 
     /// Fetches user details for the authenticated user.
-    /// - Returns: The user's details as raw data.
+    /// - Returns: The user's details as a dictionary.
     /// - Throws: An `APIError` if the operation fails.
-    public func getAuthenticatedUserDetails() async throws -> Data {
+    public func getAuthenticatedUserDetails() async throws -> [String: Any] {
         logger.info("Fetching authenticated user details")
         do {
             let data = try await networkManager.getData(from: "rest/api/2/myself")
+            let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
             logger.info("Successfully fetched authenticated user details")
-            return data
+            return json ?? [:]
         } catch let error as APIError {
             logger.error("APIError occurred during user details fetch: \(error.localizedDescription)")
             throw error

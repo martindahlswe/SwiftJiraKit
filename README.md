@@ -1,46 +1,26 @@
+
 # SwiftJiraKit
 
-SwiftJiraKit is a lightweight and modular Swift library for interacting with Jira's REST API (version 2). It simplifies common Jira operations like logging work time, managing worklogs, and fetching issues, making it ideal for developers integrating Jira into their Swift projects.
+SwiftJiraKit is a Swift-based library designed to interact with Jira's REST API seamlessly. It provides an interface for managing issues, worklogs, and other Jira features programmatically.
 
 ## Features
 
-- **Worklogs**:
-  - Log, retrieve, update, and delete worklogs for Jira issues.
-- **Issues**:
-  - Fetch details of individual or multiple Jira issues based on JQL queries.
-- **Connectivity**:
-  - Validate connectivity to your Jira instance, including URL reachability and token authentication.
-- **JQL Builder**:
-  - Construct JQL queries programmatically for advanced filtering.
-- **Date Handling**:
-  - Utilities for ISO8601 and Jira-specific date formats.
-- **Modular Design**:
-  - Clean, extensible, and testable API interface.
+- **Issue Management**: Create, update, and fetch issues from Jira.
+- **Worklog Management**: Add and manage worklogs for Jira issues.
+- **Connectivity Tools**: Easily configure and test Jira API connectivity.
 
 ## Installation
 
-### Swift Package Manager (SPM)
-Add the following dependency to your `Package.swift` file:
-```swift
-dependencies: [
-    .package(url: "https://github.com/martindahlswe/SwiftJiraKit.git", from: "1.0.0")
-]
-```
+SwiftJiraKit can be integrated using Swift Package Manager (SPM). For details, refer to [installation instructions](Installation.md).
 
-Then, include `SwiftJiraKit` in your target dependencies:
-```swift
-targets: [
-    .target(
-        name: "YourApp",
-        dependencies: ["SwiftJiraKit"]
-    )
-]
-```
+## Usage
 
-## Documentation
+Learn how to use SwiftJiraKit with examples in [usage instructions](Usage.md).
 
-For detailed usage examples, refer to the [GitHub Wiki](https://github.com/martindahlswe/SwiftJiraKit/wiki).
+## Contributing
+
+Contributions are welcome! Please follow the contributing guidelines.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+SwiftJiraKit is available under the MIT license. See [LICENSE](LICENSE) for details.

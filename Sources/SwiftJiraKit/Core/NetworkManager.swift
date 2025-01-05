@@ -13,14 +13,17 @@ extension URLSession: URLSessionProtocol {}
 public class NetworkManager: NetworkManaging {
     private let logger = Logger(label: "com.swiftjirakit.networkmanager")
     private let baseURL: URL
+    private let token: String
     private let urlSession: URLSessionProtocol
 
     /// Initializes the NetworkManager with a base URL and URLSessionProtocol.
     /// - Parameters:
     ///   - baseURL: The base URL for API requests.
+    ///   - token: The Bearer token for authentication.
     ///   - urlSession: A custom `URLSessionProtocol` for networking.
-    public init(baseURL: URL, urlSession: URLSessionProtocol = URLSession.shared) {
+    public init(baseURL: URL, token: String, urlSession: URLSessionProtocol = URLSession.shared) {
         self.baseURL = baseURL
+        self.token = token
         self.urlSession = urlSession
         logger.info("NetworkManager initialized with base URL: \(baseURL)")
     }
@@ -51,6 +54,8 @@ public class NetworkManager: NetworkManaging {
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         logger.debug("Built \(method) request for URL: \(url)")
         return request
     }
