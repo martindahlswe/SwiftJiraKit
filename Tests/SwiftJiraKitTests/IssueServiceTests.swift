@@ -1,145 +1,135 @@
+//
+//  IssueServiceTests.swift
+//  SwiftJiraKitTests
+//
+
 import XCTest
 @testable import SwiftJiraKit
 
 final class IssueServiceTests: XCTestCase {
-    
-    @MainActor
-    func testGetIssue_Success() {
-        // Arrange
-        let mockNetworkManager = MockNetworkManager()
-        let issueService = IssueService(networkManager: mockNetworkManager)
+    var issueService: IssueService!
+    var localMockNetworkManager: ILocalMockNetworkManager!
 
-        let expectedResponse = IssueResponse(
-            id: "1",
-            key: "TEST-1",
-            fields: .init(
-                summary: "Test Issue",
-                description: "This is a test issue",
-                status: .init(name: "Open")
-            )
-        )
-
-        let responseData = try! JSONEncoder().encode(expectedResponse)
-        mockNetworkManager.mockResponse = .success(responseData)
-
-        let expectation = self.expectation(description: "Completion handler invoked")
-
-        // Act
-        issueService.getIssue(issueKey: "TEST-1") { result in
-            // Assert
-            switch result {
-            case .success(let issue):
-                XCTAssertEqual(issue.key, "TEST-1")
-                XCTAssertEqual(issue.fields.summary, "Test Issue")
-                XCTAssertEqual(issue.fields.status.name, "Open")
-            case .failure:
-                XCTFail("Expected success but got failure")
-            }
-            expectation.fulfill()
-        }
-
-        waitForExpectations(timeout: 1.0, handler: nil)
+    override func setUp() {
+        super.setUp()
+        localMockNetworkManager = ILocalMockNetworkManager()
+        issueService = IssueService(networkManager: localMockNetworkManager, serverName: "https://api.jira.com")
     }
 
-    @MainActor
-    func testSearchIssues_Success() {
-        // Arrange
-        let mockNetworkManager = MockNetworkManager()
-        let issueService = IssueService(networkManager: mockNetworkManager)
+    override func tearDown() {
+        issueService = nil
+        localMockNetworkManager = nil
+        super.tearDown()
+    }
 
-        let expectedIssues = [
-            IssueResponse(
-                id: "1",
-                key: "TEST-1",
-                fields: .init(
-                    summary: "First Issue",
-                    description: nil,
-                    status: .init(name: "In Progress")
-                )
-            ),
-            IssueResponse(
-                id: "2",
-                key: "TEST-2",
-                fields: .init(
-                    summary: "Second Issue",
-                    description: "Another issue",
-                    status: .init(name: "Done")
-                )
-            )
+    func testGetIssue_Success() async throws {
+        // Arrange
+        let mockIssueJSON = """
+        {
+            "id": "1001",
+            "key": "JIRA-123",
+            "fields": {
+                "summary": "Test Issue Summary",
+                "description": "Test Issue Description",
+                "status": {
+                    "name": "In Progress"
+                }
+            }
+        }
+        """.data(using: .utf8)!
+        localMockNetworkManager.mockResponse = mockIssueJSON
+
+        // Act
+        let issue = try await issueService.getIssue(issueKey: "JIRA-123")
+
+        // Assert
+        XCTAssertEqual(issue.id, "1001")
+        XCTAssertEqual(issue.key, "JIRA-123")
+        XCTAssertEqual(issue.fields.summary, "Test Issue Summary")
+        XCTAssertEqual(issue.fields.description, "Test Issue Description")
+        XCTAssertEqual(issue.fields.status.name, "In Progress")
+    }
+
+    func testGetIssue_DecodingError() async throws {
+        // Arrange
+        localMockNetworkManager.mockResponse = Data() // Invalid JSON data
+
+        // Act & Assert
+        do {
+            _ = try await issueService.getIssue(issueKey: "JIRA-123")
+            XCTFail("Expected decodingError, but no error was thrown")
+        } catch let error as APIError {
+            XCTAssertEqual(error, APIError.decodingError)
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
+
+    func testSearchIssues_Success() async throws {
+        // Arrange
+        let mockSearchJSON = """
+        [
+            {
+                "id": "1001",
+                "key": "JIRA-123",
+                "fields": {
+                    "summary": "Test Issue Summary",
+                    "description": "Test Issue Description",
+                    "status": {
+                        "name": "In Progress"
+                    }
+                }
+            },
+            {
+                "id": "1002",
+                "key": "JIRA-124",
+                "fields": {
+                    "summary": "Another Test Issue",
+                    "description": "Another Test Description",
+                    "status": {
+                        "name": "Open"
+                    }
+                }
+            }
         ]
-
-        let expectedResponse = MockSearchResponse(issues: expectedIssues)
-        let responseData = try! JSONEncoder().encode(expectedResponse)
-        mockNetworkManager.mockResponse = .success(responseData)
-
-        let expectation = self.expectation(description: "Completion handler invoked")
+        """.data(using: .utf8)!
+        localMockNetworkManager.mockResponse = mockSearchJSON
 
         // Act
-        issueService.searchIssues(jql: "project = TEST") { result in
-            // Assert
-            switch result {
-            case .success(let issues):
-                XCTAssertEqual(issues.count, 2)
-                XCTAssertEqual(issues[0].key, "TEST-1")
-                XCTAssertEqual(issues[1].fields.status.name, "Done")
-            case .failure:
-                XCTFail("Expected success but got failure")
-            }
-            expectation.fulfill()
-        }
+        let issues = try await issueService.searchIssues(jql: "status = 'Open'")
 
-        waitForExpectations(timeout: 1.0, handler: nil)
-        XCTAssertEqual(mockNetworkManager.requestedEndpoint, "rest/api/2/search")
-        XCTAssertEqual(mockNetworkManager.requestedMethod, "POST")
+        // Assert
+        XCTAssertEqual(issues.count, 2)
+        XCTAssertEqual(issues[0].id, "1001")
+        XCTAssertEqual(issues[1].fields.summary, "Another Test Issue")
+    }
+}
+
+// Local mock implementation of NetworkManaging
+final class ILocalMockNetworkManager: NetworkManaging {
+    var mockResponse: Data?
+    var mockError: Error?
+
+    func getData(from endpoint: String) async throws -> Data {
+        if let error = mockError {
+            throw error
+        }
+        return mockResponse ?? Data()
     }
 
-    @MainActor
-    func testGetIssue_Failure() {
-        // Arrange
-        let mockNetworkManager = MockNetworkManager()
-        let issueService = IssueService(networkManager: mockNetworkManager)
-
-        mockNetworkManager.mockResponse = .failure(APIError.invalidResponse)
-
-        let expectation = self.expectation(description: "Completion handler invoked")
-
-        // Act
-        issueService.getIssue(issueKey: "TEST-1") { result in
-            // Assert
-            switch result {
-            case .success:
-                XCTFail("Expected failure but got success")
-            case .failure(let error):
-                XCTAssertTrue(error is APIError)
-            }
-            expectation.fulfill()
-        }
-
-        waitForExpectations(timeout: 1.0, handler: nil)
+    func postData(to endpoint: String, body: Data) async throws -> Data {
+        throw APIError.invalidRequestBody // Not needed for IssueService tests
     }
 
-    @MainActor
-    func testSearchIssues_Failure() {
-        // Arrange
-        let mockNetworkManager = MockNetworkManager()
-        let issueService = IssueService(networkManager: mockNetworkManager)
+    func deleteData(at endpoint: String) async throws {
+        throw APIError.invalidRequestBody // Not needed for IssueService tests
+    }
 
-        mockNetworkManager.mockResponse = .failure(APIError.invalidResponse)
+    func putData(to endpoint: String, body: Data) async throws -> Data {
+        throw APIError.invalidRequestBody // Not needed for IssueService tests
+    }
 
-        let expectation = self.expectation(description: "Completion handler invoked")
-
-        // Act
-        issueService.searchIssues(jql: "project = TEST") { result in
-            // Assert
-            switch result {
-            case .success:
-                XCTFail("Expected failure but got success")
-            case .failure(let error):
-                XCTAssertTrue(error is APIError)
-            }
-            expectation.fulfill()
-        }
-
-        waitForExpectations(timeout: 1.0, handler: nil)
+    func patchData(to endpoint: String, body: Data) async throws -> Data {
+        throw APIError.invalidRequestBody // Not needed for IssueService tests
     }
 }

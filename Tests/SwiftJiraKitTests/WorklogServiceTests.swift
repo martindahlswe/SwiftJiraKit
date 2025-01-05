@@ -1,146 +1,147 @@
+//
+//  WorklogServiceTests.swift
+//  SwiftJiraKitTests
+//
+
 import XCTest
 @testable import SwiftJiraKit
 
 final class WorklogServiceTests: XCTestCase {
-    var mockNetworkManager: MockNetworkManager!
-    var service: WorklogService!
+    var worklogService: WorklogService!
+    var mockNetworkManager: WMockNetworkManager!
 
     override func setUp() {
-        mockNetworkManager = MockNetworkManager()
-        service = WorklogService(networkManager: mockNetworkManager)
+        super.setUp()
+        mockNetworkManager = WMockNetworkManager()
+        worklogService = WorklogService(networkManager: mockNetworkManager)
     }
 
     override func tearDown() {
+        worklogService = nil
         mockNetworkManager = nil
-        service = nil
+        super.tearDown()
     }
 
-    func testGetWorklogsSuccess() throws {
-        let expectation = self.expectation(description: "Get Worklogs Success")
-        let issueKey = "TEST-123"
-        let mockResponse = [
-            WorklogResponse(
-                id: "1",
-                issueId: issueKey,
-                author: WorklogResponse.User(accountId: "123", displayName: "John Doe", active: true),
-                updateAuthor: WorklogResponse.User(accountId: "123", displayName: "John Doe", active: true),
-                comment: "This is a test comment",
-                started: "2023-01-01T12:00:00.000Z",
-                timeSpent: "1h",
-                timeSpentSeconds: 3600
-            )
+    func testGetWorklogs_Success() async throws {
+        // Arrange
+        let mockWorklogJSON = """
+        [
+            {
+                "id": "1001",
+                "issueId": "JIRA-123",
+                "author": {
+                    "accountId": "abc123",
+                    "displayName": "John Doe",
+                    "active": true
+                },
+                "comment": "Worked on feature X",
+                "started": "2025-01-01T10:00:00Z",
+                "timeSpent": "2h",
+                "timeSpentSeconds": 7200
+            }
         ]
-        mockNetworkManager.mockResponse = .success(try JSONEncoder().encode(mockResponse))
+        """.data(using: .utf8)!
+        mockNetworkManager.mockResponse = mockWorklogJSON
 
-        service.getWorklogs(issueKey: issueKey) { result in
-            switch result {
-            case .success(let worklogs):
-                XCTAssertEqual(worklogs.count, 1)
-                XCTAssertEqual(worklogs.first?.id, "1")
-                expectation.fulfill()
-            case .failure:
-                XCTFail("Expected success but got failure")
-            }
-        }
+        // Act
+        let worklogs = try await worklogService.getWorklogs(for: "JIRA-123")
 
-        wait(for: [expectation], timeout: 2.0)
+        // Assert
+        XCTAssertEqual(worklogs.count, 1)
+        XCTAssertEqual(worklogs[0].id, "1001")
+        XCTAssertEqual(worklogs[0].author?.displayName, "John Doe")
+        XCTAssertEqual(worklogs[0].comment, "Worked on feature X")
     }
 
-    func testGetWorklogsEmptyResponse() throws {
-        let expectation = self.expectation(description: "Get Worklogs Empty Response")
-        let issueKey = "TEST-123"
-        let mockResponse: [WorklogResponse] = []
-        mockNetworkManager.mockResponse = .success(try JSONEncoder().encode(mockResponse))
+    func testGetWorklogs_DecodingError() async {
+        // Arrange
+        mockNetworkManager.mockResponse = Data() // Invalid JSON data
 
-        service.getWorklogs(issueKey: issueKey) { result in
-            switch result {
-            case .success(let worklogs):
-                XCTAssertEqual(worklogs.count, 0)
-                expectation.fulfill()
-            case .failure:
-                XCTFail("Expected success but got failure")
-            }
+        // Act & Assert
+        do {
+            _ = try await worklogService.getWorklogs(for: "JIRA-123")
+            XCTFail("Expected decodingError, but no error was thrown")
+        } catch let error as APIError {
+            XCTAssertEqual(error, APIError.decodingError, "Expected decodingError but got \(error)")
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
         }
-
-        wait(for: [expectation], timeout: 2.0)
     }
 
-    func testGetWorklogsFailure() throws {
-        let expectation = self.expectation(description: "Get Worklogs Failure")
-        let issueKey = "TEST-123"
-        mockNetworkManager.mockResponse = .failure(APIError.invalidResponse)
-
-        service.getWorklogs(issueKey: issueKey) { result in
-            switch result {
-            case .success:
-                XCTFail("Expected failure but got success")
-            case .failure(let error):
-                XCTAssertEqual(error as? APIError, APIError.invalidResponse)
-                expectation.fulfill()
-            }
+    func testAddWorklog_Success() async throws {
+        // Arrange
+        let mockWorklogResponseJSON = """
+        {
+            "id": "2001",
+            "issueId": "JIRA-123",
+            "author": {
+                "accountId": "abc123",
+                "displayName": "John Doe",
+                "active": true
+            },
+            "comment": "Worked on feature Y",
+            "started": "2025-01-01T12:00:00Z",
+            "timeSpent": "3h",
+            "timeSpentSeconds": 10800
         }
+        """.data(using: .utf8)!
+        let worklogRequest = WorklogRequest(timeSpent: "3h", started: "2025-01-01T12:00:00Z", comment: "Worked on feature Y")
+        mockNetworkManager.mockResponse = mockWorklogResponseJSON
 
-        wait(for: [expectation], timeout: 2.0)
+        // Act
+        let createdWorklog = try await worklogService.addWorklog(to: "JIRA-123", worklog: worklogRequest)
+
+        // Assert
+        XCTAssertEqual(createdWorklog.id, "2001")
+        XCTAssertEqual(createdWorklog.author?.displayName, "John Doe")
+        XCTAssertEqual(createdWorklog.comment, "Worked on feature Y")
     }
 
-    func testAddWorklogSuccess() throws {
-        let expectation = self.expectation(description: "Add Worklog Success")
-        let issueKey = "TEST-123"
-        let worklogRequest = WorklogRequest(
-            timeSpent: "1h",
-            timeSpentSeconds: 3600,
-            started: "2023-01-01T12:00:00.000Z",
-            comment: "This is a test worklog",
-            visibility: nil
-        )
-        let mockResponse = WorklogResponse(
-            id: "1",
-            issueId: issueKey,
-            author: WorklogResponse.User(accountId: "123", displayName: "John Doe", active: true),
-            updateAuthor: WorklogResponse.User(accountId: "123", displayName: "John Doe", active: true),
-            comment: "This is a test worklog",
-            started: "2023-01-01T12:00:00.000Z",
-            timeSpent: "1h",
-            timeSpentSeconds: 3600
-        )
-        mockNetworkManager.mockResponse = .success(try JSONEncoder().encode(mockResponse))
+    func testAddWorklog_DecodingError() async {
+        // Arrange
+        let worklogRequest = WorklogRequest(timeSpent: "3h", started: "2025-01-01T12:00:00Z", comment: "Worked on feature Y")
+        mockNetworkManager.mockResponse = Data() // Invalid JSON data
 
-        service.addWorklog(issueKey: issueKey, worklog: worklogRequest) { result in
-            switch result {
-            case .success(let worklog):
-                XCTAssertEqual(worklog.id, "1")
-                XCTAssertEqual(worklog.comment, "This is a test worklog")
-                expectation.fulfill()
-            case .failure:
-                XCTFail("Expected success but got failure")
-            }
+        // Act & Assert
+        do {
+            _ = try await worklogService.addWorklog(to: "JIRA-123", worklog: worklogRequest)
+            XCTFail("Expected decodingError, but no error was thrown")
+        } catch let error as APIError {
+            XCTAssertEqual(error, APIError.decodingError, "Expected decodingError but got \(error)")
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
         }
+    }
+}
 
-        wait(for: [expectation], timeout: 2.0)
+// Local mock implementation of NetworkManaging for WorklogService
+final class WMockNetworkManager: NetworkManaging {
+    var mockResponse: Data?
+    var mockError: Error?
+
+    func getData(from endpoint: String) async throws -> Data {
+        if let error = mockError {
+            throw error
+        }
+        return mockResponse ?? Data()
     }
 
-    func testAddWorklogFailure() throws {
-        let expectation = self.expectation(description: "Add Worklog Failure")
-        let issueKey = "TEST-123"
-        let worklogRequest = WorklogRequest(
-            timeSpent: "1h",
-            timeSpentSeconds: 3600,
-            started: "2023-01-01T12:00:00.000Z",
-            comment: "This is a test worklog",
-            visibility: nil
-        )
-        mockNetworkManager.mockResponse = .failure(APIError.invalidResponse)
-
-        service.addWorklog(issueKey: issueKey, worklog: worklogRequest) { result in
-            switch result {
-            case .success:
-                XCTFail("Expected failure but got success")
-            case .failure(let error):
-                XCTAssertEqual(error as? APIError, APIError.invalidResponse)
-                expectation.fulfill()
-            }
+    func postData(to endpoint: String, body: Data) async throws -> Data {
+        if let error = mockError {
+            throw error
         }
+        return mockResponse ?? Data()
+    }
 
-        wait(for: [expectation], timeout: 2.0)
+    func deleteData(at endpoint: String) async throws {
+        throw APIError.invalidRequestBody // Not used in WorklogService
+    }
+
+    func putData(to endpoint: String, body: Data) async throws -> Data {
+        throw APIError.invalidRequestBody // Not used in WorklogService
+    }
+
+    func patchData(to endpoint: String, body: Data) async throws -> Data {
+        throw APIError.invalidRequestBody // Not used in WorklogService
     }
 }

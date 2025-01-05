@@ -1,53 +1,79 @@
-// NetworkManager.swift
-
 import Foundation
+import Logging
 
+/// Protocol for URLSession to allow mocking in tests.
+public protocol URLSessionProtocol {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+/// Extend URLSession to conform to URLSessionProtocol.
+extension URLSession: URLSessionProtocol {}
+
+/// Implementation of the `NetworkManaging` protocol for performing HTTP requests.
 public class NetworkManager: NetworkManaging {
+    private let logger = Logger(label: "com.swiftjirakit.networkmanager")
     private let baseURL: URL
-    private let token: String
+    private let urlSession: URLSessionProtocol
 
-    public init(baseURL: URL, token: String) {
+    /// Initializes the NetworkManager with a base URL and URLSessionProtocol.
+    /// - Parameters:
+    ///   - baseURL: The base URL for API requests.
+    ///   - urlSession: A custom `URLSessionProtocol` for networking.
+    public init(baseURL: URL, urlSession: URLSessionProtocol = URLSession.shared) {
         self.baseURL = baseURL
-        self.token = token
+        self.urlSession = urlSession
+        logger.info("NetworkManager initialized with base URL: \(baseURL)")
     }
 
-    public func sendRequest<T: Decodable>(
-        endpoint: String,
-        method: String,
-        body: Data? = nil,  // Keep this optional
-        completion: @escaping @Sendable (Result<T, Error>) -> Void
-    ) {
-        var request = URLRequest(url: baseURL.appendingPathComponent(endpoint))
-        request.httpMethod = method
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    /// Performs a GET request to the specified endpoint.
+    public func getData(from endpoint: String) async throws -> Data {
+        let request = buildRequest(endpoint: endpoint, method: "GET")
+        return try await performRequest(request)
+    }
 
-        if let body = body {
-            request.httpBody = body
+    /// Performs a POST request to the specified endpoint with a body.
+    public func postData(to endpoint: String, body: Data) async throws -> Data {
+        var request = buildRequest(endpoint: endpoint, method: "POST")
+        request.httpBody = body
+        return try await performRequest(request)
+    }
+
+    /// Performs a DELETE request to the specified endpoint.
+    public func deleteData(at endpoint: String) async throws {
+        let request = buildRequest(endpoint: endpoint, method: "DELETE")
+        _ = try await performRequest(request)
+    }
+
+    /// Builds a URLRequest for the given endpoint and HTTP method.
+    private func buildRequest(endpoint: String, method: String) -> URLRequest {
+        guard let url = URL(string: endpoint, relativeTo: baseURL) else {
+            fatalError("Invalid URL for endpoint: \(endpoint)")
         }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        logger.debug("Built \(method) request for URL: \(url)")
+        return request
+    }
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
+    /// Executes the URLRequest and handles the response.
+    private func performRequest(_ request: URLRequest) async throws -> Data {
+        logger.info("Starting request to: \(request.url?.absoluteString ?? "Unknown URL")")
+        do {
+            let (data, response) = try await urlSession.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.invalidResponse
             }
 
-            if T.self == Void.self {
-                completion(.success(() as! T))
-                return
+            guard (200...299).contains(httpResponse.statusCode) else {
+                logger.error("Request failed with status code: \(httpResponse.statusCode)")
+                throw APIError.unknown("HTTP \(httpResponse.statusCode)")
             }
 
-            guard let data = data else {
-                completion(.failure(NSError(domain: "No data", code: 0, userInfo: nil)))
-                return
-            }
-
-            do {
-                let decodedResponse = try JSONDecoder().decode(T.self, from: data)
-                completion(.success(decodedResponse))
-            } catch {
-                completion(.failure(error))
-            }
-        }.resume()
+            logger.info("Request succeeded for URL: \(request.url?.absoluteString ?? "Unknown URL")")
+            return data
+        } catch {
+            logger.error("Request failed: \(error.localizedDescription)")
+            throw APIError.networkError(error)
+        }
     }
 }

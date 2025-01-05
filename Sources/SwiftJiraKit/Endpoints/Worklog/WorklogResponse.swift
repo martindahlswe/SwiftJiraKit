@@ -1,6 +1,7 @@
 import Foundation
 
-public struct WorklogResponse: Decodable, Encodable, Sendable {
+/// Represents a response from the Jira API for a worklog.
+public struct WorklogResponse: Decodable {
     public let id: String?
     public let issueId: String?
     public let author: User?
@@ -10,10 +11,10 @@ public struct WorklogResponse: Decodable, Encodable, Sendable {
     public let timeSpent: String?
     public let timeSpentSeconds: Int?
 
-    public struct User: Decodable, Encodable, Sendable {
+    /// Represents a user associated with a worklog.
+    public struct User: Decodable {
         public let accountId: String?
         public let displayName: String?
         public let active: Bool?
     }
 }
-

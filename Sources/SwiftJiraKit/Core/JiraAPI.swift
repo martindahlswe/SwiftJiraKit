@@ -1,45 +1,51 @@
 import Foundation
+import Logging
 
-/// Declaring JiraAPI as `@unchecked Sendable` because it is up to the developer
-/// to ensure thread safety within this class.
-public class JiraAPI: @unchecked Sendable {
-    private let baseURL: URL
-    private let token: String
-    private let privateNetworkManager: NetworkManager
+/// Provides methods for interacting with Jira's REST API.
+public class JiraAPI {
+    private let networkManager: NetworkManaging
+    private let logger = Logger(label: "com.swiftjirakit.jiraapi")
 
-    public var networkManager: NetworkManager {
-        return privateNetworkManager
+    /// Initializes the JiraAPI with a network manager.
+    /// - Parameter networkManager: A `NetworkManaging` instance for handling requests.
+    public init(networkManager: NetworkManaging) {
+        self.networkManager = networkManager
+        logger.info("JiraAPI initialized")
     }
 
-    public init(baseURL: String, token: String) {
-        guard let url = URL(string: baseURL) else {
-            fatalError("Invalid URL string.")
+    /// Validates connectivity to the Jira instance.
+    /// - Returns: `true` if connectivity is validated, otherwise `false`.
+    /// - Throws: An `APIError` if the operation fails.
+    public func validateConnectivity() async throws -> Bool {
+        logger.info("Validating connectivity to Jira instance")
+        do {
+            let _ = try await networkManager.getData(from: "rest/api/2/myself")
+            logger.info("Connectivity validated successfully")
+            return true
+        } catch let error as APIError {
+            logger.error("APIError occurred during connectivity validation: \(error.localizedDescription)")
+            throw error
+        } catch {
+            logger.error("Unexpected error during connectivity validation: \(error.localizedDescription)")
+            throw APIError.networkError(error)
         }
-        self.baseURL = url
-        self.token = token
-        self.privateNetworkManager = NetworkManager(baseURL: url, token: token)
     }
 
-    public var connectivityService: ConnectivityService {
-        return ConnectivityService(networkManager: networkManager)
-    }
-
-    /// Original `validateConnectivity` function (unchanged for backwards compatibility)
-    public func validateConnectivity(completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
-        connectivityService.validateConnectivity(completion: completion)
-    }
-
-    /// New `async` version of `validateConnectivity`
-    public func validateConnectivity() async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            validateConnectivity { result in
-                switch result {
-                case .success:
-                    continuation.resume()
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
-            }
+    /// Fetches user details for the authenticated user.
+    /// - Returns: The user's details as raw data.
+    /// - Throws: An `APIError` if the operation fails.
+    public func getAuthenticatedUserDetails() async throws -> Data {
+        logger.info("Fetching authenticated user details")
+        do {
+            let data = try await networkManager.getData(from: "rest/api/2/myself")
+            logger.info("Successfully fetched authenticated user details")
+            return data
+        } catch let error as APIError {
+            logger.error("APIError occurred during user details fetch: \(error.localizedDescription)")
+            throw error
+        } catch {
+            logger.error("Unexpected error during user details fetch: \(error.localizedDescription)")
+            throw APIError.networkError(error)
         }
     }
 }

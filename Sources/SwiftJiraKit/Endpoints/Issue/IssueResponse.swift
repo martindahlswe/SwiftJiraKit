@@ -1,17 +1,20 @@
 import Foundation
 
+/// Represents a response from the Jira API for a specific issue.
 public struct IssueResponse: Codable {
-    public let id: String // Changed to public
-    public let key: String // Changed to public
-    public let fields: Fields // Changed to public
+    public let id: String
+    public let key: String
+    public let fields: Fields
 
+    /// Represents the fields of a Jira issue.
     public struct Fields: Codable {
-        public let summary: String // Changed to public
-        public let description: String? // Changed to public
-        public let status: Status // Changed to public
+        public let summary: String
+        public let description: String?
+        public let status: Status
 
+        /// Represents the status of a Jira issue.
         public struct Status: Codable {
-            public let name: String // Changed to public
+            public let name: String
         }
     }
 }

@@ -1,34 +1,46 @@
 import Foundation
+import Logging
 
+/// Service for validating connectivity to the Jira instance.
 public class ConnectivityService {
-    private let networkManager: NetworkManaging  // Use the protocol
+    private let networkManager: NetworkManaging
+    private let logger = Logger(label: "com.swiftjirakit.connectivityservice")
 
-    /// Make the initializer public
+    /// Initializes the service with a network manager.
+    /// - Parameter networkManager: An instance conforming to `NetworkManaging`.
     public init(networkManager: NetworkManaging) {
         self.networkManager = networkManager
+        logger.info("ConnectivityService initialized")
     }
 
-    /// Validates connectivity by checking the provided URL and token.
-    /// - Parameter completion: A closure with the result of the validation.
-    public func validateConnectivity(completion: @escaping @Sendable (Result<Void, Error>) -> Void) {
-        let endpoint = "rest/api/2/myself" // A lightweight endpoint to check authentication.
-        networkManager.sendRequest(endpoint: endpoint, method: "GET", body: nil) { (result: Result<MyselfResponse, Error>) in
-            switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(let error):
-                completion(.failure(error))
-            }
+    /// Validates connectivity to the Jira instance by hitting a lightweight endpoint.
+    /// - Returns: `true` if connectivity is validated, otherwise `false`.
+    /// - Throws: An `APIError` if the operation fails.
+    public func validateConnectivity() async throws -> Bool {
+        logger.info("Validating connectivity to Jira instance")
+        let endpoint = "rest/api/2/myself"
+
+        do {
+            let data = try await networkManager.getData(from: endpoint)
+            _ = try JSONDecoder().decode(MyselfResponse.self, from: data)
+            logger.info("Connectivity successfully validated")
+            return true
+        } catch let error as DecodingError {
+            logger.error("Failed to decode response: \(error.localizedDescription)")
+            throw APIError.decodingError
+        } catch let error as APIError {
+            logger.error("APIError occurred: \(error.localizedDescription)")
+            throw error
+        } catch {
+            logger.error("Unexpected error occurred: \(error.localizedDescription)")
+            throw APIError.networkError(error)
         }
     }
 }
 
-public struct MyselfResponse: Decodable, Encodable { // Add Encodable conformance
-    let selfURL: String // URL of the authenticated user's profile
-    let accountId: String // Account ID of the user
-
-    private enum CodingKeys: String, CodingKey {
-        case selfURL = "self"
-        case accountId
-    }
+/// A lightweight response model for the `/myself` endpoint.
+public struct MyselfResponse: Decodable {
+    public let name: String
+    public let emailAddress: String
+    public let displayName: String
 }
