@@ -1,6 +1,6 @@
 import Foundation
 
-public struct JiraIssue: Codable, Sendable {
+public struct JiraIssue: Codable, Sendable {  // Add Sendable conformance
     public let key: String
     public let summary: String
 
@@ -12,31 +12,39 @@ public struct JiraIssue: Codable, Sendable {
 
 public class Issue {
     private let api: SwiftJiraKit
-    
+
     public init(api: SwiftJiraKit) {
         self.api = api
     }
-    
-    public func fetchAssignedIssues(status: String?) async throws -> [JiraIssue] {
-        var parameters: [String: String] = ["assignee": "currentUser()"]
-        if let status = status {
-            parameters["status"] = status
-        }
+
+    public func fetchAssignedIssues(maxResults: Int = 50) async throws -> [JiraIssue] {
+        // JQL query
+        let jql = "assignee=currentUser() AND statusCategory!=done"
+        let parameters: [String: String] = [
+            "jql": jql,
+            "maxResults": "\(maxResults)",
+            "fields": "key,summary"
+        ]
 
         let endpoint = "search"
+
+        // Make the API request
         let data = try await api.makeRequest(endpoint: endpoint, parameters: parameters)
 
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let issues = json["issues"] as? [[String: Any]] {
-            return issues.compactMap { raw in
-                guard let key = raw["key"] as? String, let fields = raw["fields"] as? [String: Any],
-                      let summary = fields["summary"] as? String else {
-                    return nil
-                }
-                return JiraIssue(key: key, summary: summary)
+        // Parse JSON response
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let issuesArray = json["issues"] as? [[String: Any]] else {
+            throw NSError(domain: "SwiftJiraKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to parse issues"])
+        }
+
+        // Map response to JiraIssue objects
+        return issuesArray.compactMap { issueDict in
+            guard let key = issueDict["key"] as? String,
+                  let fields = issueDict["fields"] as? [String: Any],
+                  let summary = fields["summary"] as? String else {
+                return nil
             }
-        } else {
-            throw NSError(domain: "SwiftJiraKit", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch issues"])
+            return JiraIssue(key: key, summary: summary)
         }
     }
 }
