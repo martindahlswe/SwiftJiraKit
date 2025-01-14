@@ -1,6 +1,9 @@
 import Foundation
 
 public class NetworkManager {
+    // Make the initializer public
+    public init() {}
+
     // Perform network request with async/await
     public func makeRequest(baseURL: String, endpoint: String, method: String = "GET", parameters: [String: String]? = nil, auth: Authentication) async throws -> Data {
         var urlComponents = URLComponents(string: baseURL + "/rest/api/2/" + endpoint)!
