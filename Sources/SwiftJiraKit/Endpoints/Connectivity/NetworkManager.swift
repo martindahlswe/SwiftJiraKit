@@ -16,4 +16,20 @@ public class NetworkManager {
         let (data, _) = try await URLSession.shared.data(for: request)
         return data
     }
+
+    // Check server connectivity and validate the token
+    public func checkConnectivity(baseURL: String, auth: Authentication) async throws -> Bool {
+        let endpoint = "myself" // This endpoint checks the validity of the token and server connectivity
+        
+        do {
+            let _ = try await makeRequest(baseURL: baseURL, endpoint: endpoint, auth: auth)
+            return true // The server is reachable and the token is valid
+        } catch {
+            throw ConnectivityError.serverOrTokenInvalid
+        }
+    }
+}
+
+public enum ConnectivityError: Error {
+    case serverOrTokenInvalid
 }
