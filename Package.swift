@@ -1,32 +1,24 @@
-// swift-tools-version:6.0
+// swift-tools-version: 5.7
+
 import PackageDescription
 
 let package = Package(
     name: "SwiftJiraKit",
     platforms: [
-        .macOS(.v14),
-        .iOS(.v15)
+        .macOS(.v12), .iOS(.v14)
     ],
     products: [
         .library(
             name: "SwiftJiraKit",
-            targets: ["SwiftJiraKit"]
-        ),
+            targets: ["SwiftJiraKit"]),
     ],
-    dependencies: [
-        // Add the swift-log dependency
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.4.0"),
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "SwiftJiraKit",
-            dependencies: [
-                .product(name: "Logging", package: "swift-log")
-            ]
-        ),
+            dependencies: []),
         .testTarget(
             name: "SwiftJiraKitTests",
-            dependencies: ["SwiftJiraKit"]
-        ),
+            dependencies: ["SwiftJiraKit"]),
     ]
 )

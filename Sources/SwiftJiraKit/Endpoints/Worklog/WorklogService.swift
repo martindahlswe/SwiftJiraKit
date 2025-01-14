@@ -1,50 +1,68 @@
 import Foundation
-import Logging
 
-/// Service for managing Jira worklogs.
 public class WorklogService {
-    private let networkManager: NetworkManaging
-    private let logger = Logger(label: "com.swiftjirakit.worklogservice")
-
-    /// Initializes the service with a network manager.
-    /// - Parameter networkManager: A `NetworkManaging` instance.
-    public init(networkManager: NetworkManaging) {
-        self.networkManager = networkManager
-        logger.info("WorklogService initialized")
+    private let api: SwiftJiraKit
+    
+    public init(api: SwiftJiraKit) {
+        self.api = api
     }
 
-    /// Creates a new worklog for a specific issue.
-    /// - Parameters:
-    ///   - issueKey: The key or ID of the Jira issue.
-    ///   - worklog: The worklog request data.
-    /// - Returns: The created `WorklogResponse`.
-    /// - Throws: An `APIError` if the operation fails.
-    public func addWorklog(
-        to issueKey: String,
-        worklog: WorklogRequest
-    ) async throws -> WorklogResponse {
-        let endpoint = "rest/api/2/issue/\(issueKey)/worklog"
-        logger.info("Preparing to send worklog to \(endpoint)")
+    // Fetch all worklogs for a specific issue
+    public func fetchWorklogs(issueKey: String) async throws -> [WorklogResponse] {
+        let endpoint = "issue/\(issueKey)/worklog"
+        let data = try await api.makeRequest(endpoint: endpoint)
+        
+        let decoder = JSONDecoder()
+        let worklogs = try decoder.decode([WorklogResponse].self, from: data)
+        return worklogs
+    }
 
-        // Encode the worklog payload
-        let payload = try JSONEncoder().encode(worklog)
-        logger.info("[SwiftJiraKit] Worklog payload: \(String(data: payload, encoding: .utf8) ?? "Invalid UTF8")")
+    // Fetch a specific worklog by ID
+    public func fetchWorklog(issueKey: String, worklogId: String) async throws -> WorklogResponse {
+        let endpoint = "issue/\(issueKey)/worklog/\(worklogId)"
+        let data = try await api.makeRequest(endpoint: endpoint)
+        
+        let decoder = JSONDecoder()
+        let worklog = try decoder.decode(WorklogResponse.self, from: data)
+        return worklog
+    }
 
-        // Send the POST request
-        do {
-            let data = try await networkManager.postData(to: endpoint, body: payload)
-            let createdWorklog = try JSONDecoder().decode(WorklogResponse.self, from: data)
-            logger.info("Successfully created worklog with ID: \(createdWorklog.id ?? "Unknown") for issue: \(issueKey)")
-            return createdWorklog
-        } catch let error as DecodingError {
-            logger.error("Failed to decode worklog creation response: \(error.localizedDescription)")
-            throw APIError.decodingError
-        } catch let error as APIError {
-            logger.error("APIError occurred while creating worklog: \(error.localizedDescription)")
-            throw error
-        } catch {
-            logger.error("Unexpected error occurred while creating worklog: \(error.localizedDescription)")
-            throw APIError.networkError(error)
-        }
+    // Add a new worklog to an issue
+    public func addWorklog(issueKey: String, request: WorklogRequest) async throws {
+        let endpoint = "issue/\(issueKey)/worklog"
+        let encoder = JSONEncoder()
+        let jsonData = try encoder.encode(request)
+        
+        var request = URLRequest(url: URL(string: api.baseURL + endpoint)!)
+        request.httpMethod = "POST"
+        request.allHTTPHeaderFields = api.auth.getAuthorizationHeader()
+        request.httpBody = jsonData
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+
+    // Delete a specific worklog entry
+    public func deleteWorklog(issueKey: String, worklogId: String) async throws {
+        let endpoint = "issue/\(issueKey)/worklog/\(worklogId)"
+        
+        var request = URLRequest(url: URL(string: api.baseURL + endpoint)!)
+        request.httpMethod = "DELETE"
+        request.allHTTPHeaderFields = api.auth.getAuthorizationHeader()
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+
+    // Edit an existing worklog entry
+    public func editWorklog(issueKey: String, worklogId: String, request: WorklogRequest) async throws {
+        let endpoint = "issue/\(issueKey)/worklog/\(worklogId)"
+        let encoder = JSONEncoder()
+        let jsonData = try encoder.encode(request)
+        
+        var request = URLRequest(url: URL(string: api.baseURL + endpoint)!)
+        request.httpMethod = "PUT"
+        request.allHTTPHeaderFields = api.auth.getAuthorizationHeader()
+        request.httpBody = jsonData
+        
+        let (_, _) = try await URLSession.shared.data(for: request)
     }
 }
